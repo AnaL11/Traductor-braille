@@ -1,1 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Traductor Braille</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background: #f0f0f0;
+      color: #333;
+      padding: 20px;
+    }
+    video {
+      border: 2px solid #333;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 400px;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 1.1em;
+      border: none;
+      background: #333;
+      color: #fff;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    h2 {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Traductor Braille a Texto</h1>
+  <video id="video" autoplay></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <div>
+    <button onclick="captureAndPredict()">Capturar y traducir</button>
+  </div>
+  <h2 id="output">Esperando captura...</h2>
+
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+  <script>
+    let model;
+    const video = document.getElementById('video');
+    const output = document.getElementById('output');
+
+    async function init() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+      } catch (err) {
+        alert("No se pudo acceder a la cámara.");
+      }
+
+      const URL = "model/"; // carpeta donde colocas model.json y metadata.json
+      model = await tmImage.load(URL + "model.json", URL + "metadata.json");
+    }
+
+    async function captureAndPredict() {
+      const canvas = document.getElementById('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+
+      const prediction = await model.predict(canvas);
+      prediction.sort((a, b) => b.probability - a.probability);
+
+      const palabra = prediction[0].className;
+      output.innerText = `Palabra detectada: ${palabra}`;
+      speak(`La palabra es ${palabra}`);
+    }
+
+    function speak(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "es-MX"; // español latinoamericano
+      speechSynthesis.speak(utterance);
+    }
+
+    init();
+  </script>
+</body>
+</html>
 
