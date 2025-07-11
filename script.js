@@ -14,8 +14,11 @@ const letterCountInput = document.getElementById('letterCount');
 const output = document.getElementById('output');
 const instructions = document.getElementById('instructions');
 
-function speak(texto) {
-  const utterance = new SpeechSynthesisUtterance(texto);
+// Umbral de confianza para aceptar predicción
+const CONFIDENCE_THRESHOLD = 0.3;
+
+function speak(text) {
+  const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "es-MX";
   speechSynthesis.speak(utterance);
 }
@@ -45,10 +48,10 @@ async function startCamera() {
     captureBtn.disabled = false;
     resetBtn.disabled = true;
 
-    instructions.innerText = "Coloca el pop-it al centro y presiona Capturar palabra.";
-    speak("Coloca el pop-it al centro y presiona Capturar palabra.");
+    instructions.innerText = "Coloca el pop-it en el centro y presiona Capturar palabra.";
+    speak("Coloca el pop-it en el centro y presiona Capturar palabra.");
   } catch (err) {
-    alert("No se pudo activar la cámara.");
+    alert("No se pudo activar la cámara trasera.");
     console.error(err);
   }
 }
@@ -71,23 +74,13 @@ async function loadModel() {
 
 async function predictWordFromImage(numLetters) {
   if (!streamStarted) {
-    speak("Primero activa la cámara.");
+    speak("Primero debes activar la cámara.");
     return;
   }
 
-  // Reducimos altura del canvas al 20% para centrarnos en el área inferior
-  const cropPercent = 0.2;
-  const newHeight = Math.floor(video.videoHeight * cropPercent);
   canvas.width = video.videoWidth;
-  canvas.height = newHeight;
-
-  ctx.drawImage(
-    video,
-    0, video.videoHeight - newHeight,
-    video.videoWidth, newHeight,
-    0, 0,
-    canvas.width, canvas.height
-  );
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
   stopCamera();
   video.style.display = 'none';
@@ -97,34 +90,42 @@ async function predictWordFromImage(numLetters) {
   capturedImage.style.display = 'block';
 
   const segmentWidth = Math.floor(canvas.width / numLetters);
-  let palabra = [];
+  let word = [];
+  let uncertainLetters = 0;
 
   for (let i = 0; i < numLetters; i++) {
-    const imageData = ctx.getImageData(i * segmentWidth, 0, segmentWidth, canvas.height);
-    const imgTensor = tf.browser.fromPixels(imageData)
+    let imageData = ctx.getImageData(i * segmentWidth, 0, segmentWidth, canvas.height);
+    let imgTensor = tf.browser.fromPixels(imageData)
       .resizeNearestNeighbor([224, 224])
       .toFloat()
       .div(255.0)
       .expandDims(0);
 
-    const prediction = await model.predict(imgTensor);
-    const probs = prediction.dataSync();
-    const index = prediction.argMax(-1).dataSync()[0];
+    let prediction = await model.predict(imgTensor);
+    let probs = prediction.dataSync();
+    let index = prediction.argMax(-1).dataSync()[0];
 
-    if (probs[index] < 0.6) {
-      palabra.push("?");
+    const confidence = probs[index];
+    if (confidence < CONFIDENCE_THRESHOLD) {
+      word.push("?");
+      uncertainLetters++;
     } else {
-      palabra.push(getLetterFromIndex(index));
+      word.push(getLetterFromIndex(index));
     }
+
+    console.log(`Letra ${i + 1}: ${getLetterFromIndex(index)} - Confianza: ${confidence.toFixed(3)}`);
   }
 
-  const palabraFinal = palabra.join('');
-  if (palabra.every(l => l === "?")) {
+  const finalWord = word.join('');
+  output.innerText = `Palabra detectada: ${finalWord}`;
+
+  if (uncertainLetters === numLetters) {
     output.innerText = "No se detectó un pop-it válido.";
     speak("No se detectó un pop-it válido. Intenta de nuevo.");
+  } else if (uncertainLetters > 0) {
+    speak(`La palabra es ${finalWord}. Algunas letras no fueron reconocidas claramente, por favor intenta de nuevo si no es correcta.`);
   } else {
-    output.innerText = `Palabra detectada: ${palabraFinal}`;
-    speak(`La palabra es ${palabraFinal}`);
+    speak(`La palabra es ${finalWord}`);
   }
 
   resetBtn.disabled = false;
@@ -150,6 +151,7 @@ resetBtn.addEventListener('click', async () => {
   output.innerText = "Esperando...";
   instructions.innerText = "Reiniciando cámara...";
   speak("Puedes capturar otra palabra.");
+
   await startCamera();
 
   captureBtn.disabled = false;
