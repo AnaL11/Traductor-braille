@@ -21,38 +21,64 @@ function speak(text) {
   speechSynthesis.speak(utterance);
 }
 
-// Mapeo de clases a letras del dataset
+// Mapeo de clases a letras (incluye vocales tildadas y la Ñ)
 function getLetterFromIndex(index) {
   const letras = "AÁBCDEÉFGHIÍJKLMNÑOÓPQRSTUÚVWXYZ";
   return letras[index] || "?";
 }
 
-// Activar cámara trasera
+// Activar cámara trasera con manejo de errores
 async function startCamera() {
   try {
+    instructions.innerText = "Solicitando acceso a la cámara...";
+    speak("Solicitando acceso a la cámara...");
+
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
     }
 
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" },
+      video: { facingMode: { exact: "environment" } },
       audio: false
     });
 
     video.srcObject = stream;
+
+    await new Promise(resolve => {
+      video.onloadedmetadata = () => {
+        video.play();
+        resolve();
+      };
+    });
+
     video.style.display = 'block';
     canvas.style.display = 'none';
     capturedImage.style.display = 'none';
     streamStarted = true;
 
+    instructions.innerText = "Cámara activada. Coloca el pop-it y presiona Capturar palabra.";
+    speak("Cámara activada. Coloca el pop-it y presiona Capturar palabra.");
+
     captureBtn.disabled = false;
     resetBtn.disabled = true;
 
-    instructions.innerText = "Coloca el pop-it en el centro y presiona Capturar palabra.";
-    speak("Coloca el pop-it en el centro y presiona Capturar palabra.");
+    console.log("✅ Cámara activada con éxito.");
   } catch (err) {
-    alert("No se pudo activar la cámara trasera.");
-    console.error(err);
+    console.error("❌ Error al activar la cámara:", err);
+
+    if (err.name === "NotAllowedError") {
+      alert("❌ Acceso a la cámara denegado. Revisa los permisos.");
+      instructions.innerText = "Acceso a la cámara denegado.";
+      speak("Acceso a la cámara denegado. Permite el acceso arriba.");
+    } else if (err.name === "NotFoundError") {
+      alert("❌ No se encontró cámara disponible.");
+      instructions.innerText = "No se encontró cámara.";
+      speak("No se encontró cámara.");
+    } else {
+      alert("❌ No se pudo activar la cámara. Revisa la consola.");
+      instructions.innerText = "Error desconocido al activar la cámara.";
+      speak("Error al activar la cámara.");
+    }
   }
 }
 
@@ -64,17 +90,18 @@ function stopCamera() {
   streamStarted = false;
 }
 
-// Cargar modelo de TensorFlow
+// Cargar modelo desde /model/model.json
 async function loadModel() {
   try {
-    model = await tf.loadGraphModel('model/model.json');
+    model = await tf.loadGraphModel('./model/model.json');
     console.log("✅ Modelo cargado.");
   } catch (err) {
     console.error("❌ Error al cargar el modelo:", err);
+    speak("Error al cargar el modelo.");
   }
 }
 
-// Predecir palabra desde imagen
+// Capturar imagen, dividirla y predecir cada letra
 async function predictWordFromImage(numLetters) {
   if (!streamStarted) {
     speak("Primero debes activar la cámara.");
@@ -115,13 +142,13 @@ async function predictWordFromImage(numLetters) {
   }
 
   const finalWord = word.join('');
-  output.innerText = Palabra detectada: ${finalWord};
 
   if (word.every(letter => letter === "?")) {
     output.innerText = "No se detectó un pop-it válido.";
     speak("No se detectó un pop-it válido. Intenta de nuevo.");
   } else {
-    speak(La palabra es ${finalWord});
+    output.innerText = `Palabra detectada: ${finalWord}`;
+    speak(`La palabra es ${finalWord}`);
   }
 
   resetBtn.disabled = false;
@@ -130,6 +157,7 @@ async function predictWordFromImage(numLetters) {
 
 // Botones
 startBtn.addEventListener('click', () => {
+  console.log("🟡 Botón presionado.");
   startCamera();
   startBtn.disabled = true;
 });
@@ -150,11 +178,10 @@ resetBtn.addEventListener('click', async () => {
   speak("Puedes capturar otra palabra.");
 
   await startCamera();
-
   captureBtn.disabled = false;
   resetBtn.disabled = true;
   startBtn.disabled = true;
 });
 
-// Cargar modelo al inicio
+// Cargar modelo al iniciar
 loadModel();
