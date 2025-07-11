@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Traductor Braille Pop-It</title>
+  <meta charset="UTF-8" />
+  <title>Traductor Braille Pop-Its</title>
   <style>
     body {
       font-family: sans-serif;
@@ -10,7 +10,6 @@
       background: #f9f9f9;
       padding: 20px;
     }
-
     video, canvas, img#capturedImage {
       max-width: 400px;
       width: 100%;
@@ -18,32 +17,22 @@
       border-radius: 10px;
       margin: 10px auto;
     }
-
-    canvas, #capturedImage {
-      display: none;
-    }
-
+    canvas, #capturedImage { display: none; }
     button, input[type=number] {
       padding: 10px 20px;
       margin: 5px;
       font-size: 1em;
     }
-
-    #output {
-      font-size: 1.5em;
-      font-weight: bold;
-      margin-top: 20px;
-    }
   </style>
 </head>
 <body>
 
-  <h1>Traductor Braille con Pop-It</h1>
+  <h1>Traductor Braille con Pop-Its</h1>
   <p id="instructions" aria-live="polite">Presiona "Activar cámara trasera" para comenzar.</p>
 
   <video id="video" autoplay playsinline></video>
   <canvas id="canvas"></canvas>
-  <img id="capturedImage" alt="Imagen capturada" />
+  <img id="capturedImage" alt="Imagen capturada">
 
   <div>
     <button id="startBtn">Activar cámara trasera</button>
@@ -55,9 +44,7 @@
 
   <h2 id="output">Esperando...</h2>
 
-  <!-- ✅ TensorFlow.js -->
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.13.0/dist/tf.min.js"></script>
-  <!-- ✅ Script JS personalizado -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
   <script src="script.js"></script>
 
 </body>
