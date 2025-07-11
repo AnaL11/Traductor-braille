@@ -14,20 +14,17 @@ const letterCountInput = document.getElementById('letterCount');
 const output = document.getElementById('output');
 const instructions = document.getElementById('instructions');
 
-// Voz en español
 function speak(text) {
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "es-MX";
   speechSynthesis.speak(utterance);
 }
 
-// Mapeo de clases a letras (incluye vocales tildadas y la Ñ)
 function getLetterFromIndex(index) {
   const letras = "AÁBCDEÉFGHIÍJKLMNÑOÓPQRSTUÚVWXYZ";
   return letras[index] || "?";
 }
 
-// Activar cámara trasera con manejo de errores
 async function startCamera() {
   try {
     instructions.innerText = "Solicitando acceso a la cámara...";
@@ -58,31 +55,28 @@ async function startCamera() {
 
     instructions.innerText = "Cámara activada. Coloca el pop-it y presiona Capturar palabra.";
     speak("Cámara activada. Coloca el pop-it y presiona Capturar palabra.");
+    console.log("✅ Cámara activada correctamente.");
 
     captureBtn.disabled = false;
     resetBtn.disabled = true;
-
-    console.log("✅ Cámara activada con éxito.");
   } catch (err) {
     console.error("❌ Error al activar la cámara:", err);
-
     if (err.name === "NotAllowedError") {
-      alert("❌ Acceso a la cámara denegado. Revisa los permisos.");
+      alert("❌ Acceso a la cámara denegado. Revisa los permisos del navegador.");
       instructions.innerText = "Acceso a la cámara denegado.";
-      speak("Acceso a la cámara denegado. Permite el acceso arriba.");
+      speak("Acceso a la cámara denegado. Permite el acceso en la parte superior.");
     } else if (err.name === "NotFoundError") {
       alert("❌ No se encontró cámara disponible.");
       instructions.innerText = "No se encontró cámara.";
       speak("No se encontró cámara.");
     } else {
-      alert("❌ No se pudo activar la cámara. Revisa la consola.");
+      alert("❌ No se pudo activar la cámara. Ver consola para más detalles.");
       instructions.innerText = "Error desconocido al activar la cámara.";
       speak("Error al activar la cámara.");
     }
   }
 }
 
-// Detener cámara
 function stopCamera() {
   if (stream && stream.getTracks) {
     stream.getTracks().forEach(track => track.stop());
@@ -90,18 +84,16 @@ function stopCamera() {
   streamStarted = false;
 }
 
-// Cargar modelo desde /model/model.json
 async function loadModel() {
   try {
     model = await tf.loadGraphModel('./model/model.json');
-    console.log("✅ Modelo cargado.");
+    console.log("✅ Modelo cargado correctamente.");
   } catch (err) {
     console.error("❌ Error al cargar el modelo:", err);
     speak("Error al cargar el modelo.");
   }
 }
 
-// Capturar imagen, dividirla y predecir cada letra
 async function predictWordFromImage(numLetters) {
   if (!streamStarted) {
     speak("Primero debes activar la cámara.");
@@ -155,7 +147,6 @@ async function predictWordFromImage(numLetters) {
   captureBtn.disabled = true;
 }
 
-// Botones
 startBtn.addEventListener('click', () => {
   console.log("🟡 Botón presionado.");
   startCamera();
@@ -183,5 +174,5 @@ resetBtn.addEventListener('click', async () => {
   startBtn.disabled = true;
 });
 
-// Cargar modelo al iniciar
+// Cargar el modelo al cargar la página
 loadModel();
